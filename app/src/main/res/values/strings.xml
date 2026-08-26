@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">DeskPet</string>
+    <string name="status_ready">Pronto para começar</string>
+    <string name="status_need_permission">Permita sobrepor outros apps para continuar</string>
+    <string name="status_running">Bichinho andando pela tela!</string>
+    <string name="status_stopped">Parado</string>
+</resources>

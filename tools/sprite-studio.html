@@ -1,0 +1,583 @@
+<title>Sprite Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #faf6f0;
+    --surface: #ffffff;
+    --surface-2: #f1e9dc;
+    --ink: #2b241c;
+    --ink-muted: #7a6c58;
+    --border: #e4d9c8;
+    --accent: #ad7a45;
+    --accent-strong: #8f6236;
+    --accent-ink: #fffaf3;
+    --checker-a: #efeae1;
+    --checker-b: #ffffff;
+    --shadow: 0 1px 2px rgba(43, 36, 28, 0.06), 0 8px 24px -12px rgba(43, 36, 28, 0.18);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1b1712;
+      --surface: #221c15;
+      --surface-2: #2c2318;
+      --ink: #f1e9dc;
+      --ink-muted: #b3a288;
+      --border: #3a3021;
+      --accent: #dba86a;
+      --accent-strong: #efc38b;
+      --accent-ink: #1b1712;
+      --checker-a: #291f16;
+      --checker-b: #221c15;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 28px -14px rgba(0, 0, 0, 0.6);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #1b1712;
+    --surface: #221c15;
+    --surface-2: #2c2318;
+    --ink: #f1e9dc;
+    --ink-muted: #b3a288;
+    --border: #3a3021;
+    --accent: #dba86a;
+    --accent-strong: #efc38b;
+    --accent-ink: #1b1712;
+    --checker-a: #291f16;
+    --checker-b: #221c15;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 28px -14px rgba(0, 0, 0, 0.6);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
+    padding: clamp(20px, 4vw, 56px);
+    display: flex;
+    justify-content: center;
+  }
+
+  .page {
+    width: 100%;
+    max-width: 1040px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  header {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .eyebrow {
+    font-family: "Space Mono", ui-monospace, monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent-strong);
+  }
+
+  h1 {
+    font-family: "Space Mono", ui-monospace, monospace;
+    font-size: clamp(1.6rem, 3vw, 2.2rem);
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .lede {
+    margin: 0;
+    max-width: 60ch;
+    color: var(--ink-muted);
+    font-size: 0.98rem;
+    line-height: 1.55;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    gap: 20px;
+    align-items: start;
+  }
+
+  @media (max-width: 780px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .panel-title {
+    font-family: "Space Mono", ui-monospace, monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    margin: 0;
+  }
+
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .swatch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1.5px solid var(--border);
+    background: var(--surface-2);
+    border-radius: 10px;
+    padding: 7px 10px 7px 7px;
+    cursor: pointer;
+    font-family: "Manrope", sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--ink);
+    transition: border-color 0.15s ease, transform 0.1s ease;
+  }
+
+  .swatch:hover { transform: translateY(-1px); }
+
+  .swatch.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+
+  .swatch-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    border: 1px solid rgba(0,0,0,0.15);
+    flex: none;
+  }
+
+  .swatch input[type="color"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border: none;
+    border-radius: 5px;
+    padding: 0;
+    background: none;
+    cursor: pointer;
+  }
+  .swatch input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+  .swatch input[type="color"]::-webkit-color-swatch { border: 1px solid rgba(0,0,0,0.15); border-radius: 5px; }
+
+  .checker-transparent {
+    background-image:
+      linear-gradient(45deg, var(--checker-a) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--checker-a) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, var(--checker-a) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--checker-a) 75%);
+    background-size: 8px 8px;
+    background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+    background-color: var(--checker-b);
+  }
+
+  .canvas-wrap {
+    overflow-x: auto;
+    padding: 4px;
+    border-radius: 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+  }
+
+  #grid {
+    display: grid;
+    width: max-content;
+    margin: 0 auto;
+    border: 1px solid var(--border);
+  }
+
+  .cell {
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    outline: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    cursor: pointer;
+  }
+  .cell:hover { outline: 1px solid var(--accent); outline-offset: -1px; }
+
+  .meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: "Space Mono", ui-monospace, monospace;
+    font-size: 0.78rem;
+    color: var(--ink-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  button.ghost {
+    font-family: "Manrope", sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--ink-muted);
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  button.ghost:hover { color: var(--ink); border-color: var(--accent); }
+
+  .preview-stage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    position: relative;
+    min-height: 220px;
+  }
+
+  #previewCanvas {
+    image-rendering: pixelated;
+    filter: drop-shadow(0 6px 10px rgba(0,0,0,0.18));
+  }
+
+  .scale-tag {
+    position: absolute;
+    bottom: 10px;
+    right: 12px;
+    font-family: "Space Mono", monospace;
+    font-size: 0.68rem;
+    color: var(--ink-muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px 6px;
+  }
+
+  .mini-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+  }
+
+  #miniCanvas {
+    image-rendering: pixelated;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+
+  textarea#codeOut {
+    width: 100%;
+    min-height: 220px;
+    resize: vertical;
+    background: var(--surface-2);
+    color: var(--ink);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    font-family: "Space Mono", ui-monospace, monospace;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    white-space: pre;
+    overflow: auto;
+  }
+
+  .copy-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  button.primary {
+    font-family: "Manrope", sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--accent-ink);
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    cursor: pointer;
+  }
+  button.primary:hover { background: var(--accent-strong); }
+  button.primary:focus-visible, button.ghost:focus-visible, .swatch:focus-visible, .cell:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .swatch, button { transition: none; }
+  }
+</style>
+
+<div class="page">
+  <header>
+    <span class="eyebrow">DeskPet · Editor de sprite</span>
+    <h1>Sprite Studio</h1>
+    <p class="lede">Rascunho do coelho marrom para o PetView.kt — clique nos quadrados para ajustar o desenho, escolha os tons de pelagem e orelha, e copie o array Kotlin já pronto no final.</p>
+  </header>
+
+  <div class="layout">
+    <section class="panel">
+      <p class="panel-title">Pincéis</p>
+      <div class="toolbar" id="toolbar">
+        <button class="swatch active" data-ch=".">
+          <span class="swatch-dot checker-transparent"></span> Apagar
+        </button>
+        <button class="swatch" data-ch="K">
+          <span class="swatch-dot" style="background:#000"></span> Contorno
+        </button>
+        <button class="swatch" data-ch="F">
+          <span class="swatch-dot" id="fDot" style="background:#c9a67c"></span> Pelagem
+          <input type="color" id="fPicker" value="#c9a67c" title="Cor da pelagem">
+        </button>
+        <button class="swatch" data-ch="E">
+          <span class="swatch-dot" id="eDot" style="background:#a6a6a6"></span> Orelha
+          <input type="color" id="ePicker" value="#a6a6a6" title="Cor da orelha">
+        </button>
+      </div>
+
+      <div class="canvas-wrap">
+        <div id="grid"></div>
+      </div>
+
+      <div class="meta-row">
+        <span id="dims">18 × 20 px</span>
+        <button class="ghost" id="resetBtn">Restaurar desenho original</button>
+      </div>
+    </section>
+
+    <div style="display:flex; flex-direction:column; gap:20px;">
+      <section class="panel">
+        <p class="panel-title">Prévia</p>
+        <div class="preview-stage">
+          <canvas id="previewCanvas"></canvas>
+          <span class="scale-tag">24×</span>
+        </div>
+        <div class="mini-row">
+          <canvas id="miniCanvas"></canvas>
+          <span>tamanho aproximado no overlay (4×)</span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <p class="panel-title">Exportar para Kotlin</p>
+        <textarea id="codeOut" readonly spellcheck="false"></textarea>
+        <div class="copy-row">
+          <button class="primary" id="copyBtn">Copiar código</button>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var COLS = 18, ROWS = 20;
+  var SEED = [
+    "..................",
+    "......KKK..KKK....",
+    "......KEK..KEK....",
+    "......KEK..KEK....",
+    "......KEK..KEK....",
+    "......KEK..KEK....",
+    "......KEK..KEK....",
+    "......KKK..KKK....",
+    "....KKKKKKKKKK....",
+    "...KFFFFFFFFFFK...",
+    "...KFFFFFFFFFFK...",
+    "...KFFKFFFKFFFK...",
+    "...KFFFFFFFFFFK...",
+    "...KFFFFKFFFFFKKKK",
+    "...KFFFFFFFFFFKKFK",
+    "...KFFFFFFFFFFKKKK",
+    "...KFFFFFFFFFFK...",
+    "...KKKKKKKKKKKK...",
+    "...KFFKFFKFFKFK...",
+    "...KKKKKKKKKKKK..."
+  ];
+
+  var grid = SEED.map(function (row) { return row.split(""); });
+  var brush = ".";
+  var painting = false;
+
+  var STORAGE_KEY = "deskpet-sprite-studio-v1";
+  try {
+    var saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+    if (saved && saved.grid && saved.grid.length === ROWS) {
+      grid = saved.grid.map(function (row) { return row.split(""); });
+      if (saved.f) { document.getElementById("fPicker").value = saved.f; }
+      if (saved.e) { document.getElementById("ePicker").value = saved.e; }
+    }
+  } catch (e) {}
+
+  function persist() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        grid: grid.map(function (r) { return r.join(""); }),
+        f: document.getElementById("fPicker").value,
+        e: document.getElementById("ePicker").value
+      }));
+    } catch (e) {}
+  }
+
+  var gridEl = document.getElementById("grid");
+  gridEl.style.gridTemplateColumns = "repeat(" + COLS + ", 20px)";
+  gridEl.style.gridTemplateRows = "repeat(" + ROWS + ", 20px)";
+
+  var cells = [];
+  for (var r = 0; r < ROWS; r++) {
+    cells[r] = [];
+    for (var c = 0; c < COLS; c++) {
+      var btn = document.createElement("button");
+      btn.className = "cell";
+      btn.type = "button";
+      btn.dataset.r = r;
+      btn.dataset.c = c;
+      gridEl.appendChild(btn);
+      cells[r][c] = btn;
+    }
+  }
+
+  function currentColor(ch) {
+    if (ch === "K") return "#000000";
+    if (ch === "F") return document.getElementById("fPicker").value;
+    if (ch === "E") return document.getElementById("ePicker").value;
+    return null;
+  }
+
+  function paintCell(r, c, ch) {
+    grid[r][c] = ch;
+    var el = cells[r][c];
+    var color = currentColor(ch);
+    if (color) {
+      el.style.background = color;
+      el.classList.remove("checker-transparent");
+    } else {
+      el.style.background = "";
+      el.classList.add("checker-transparent");
+    }
+  }
+
+  function renderAll() {
+    for (var r = 0; r < ROWS; r++) {
+      for (var c = 0; c < COLS; c++) {
+        paintCell(r, c, grid[r][c]);
+      }
+    }
+    renderPreview();
+    renderCode();
+    persist();
+  }
+
+  function renderPreview() {
+    function draw(canvas, scale) {
+      canvas.width = COLS * scale;
+      canvas.height = ROWS * scale;
+      var ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (var r = 0; r < ROWS; r++) {
+        for (var c = 0; c < COLS; c++) {
+          var color = currentColor(grid[r][c]);
+          if (color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(c * scale, r * scale, scale, scale);
+          }
+        }
+      }
+    }
+    draw(document.getElementById("previewCanvas"), 24);
+    draw(document.getElementById("miniCanvas"), 4);
+  }
+
+  function renderCode() {
+    var fHex = document.getElementById("fPicker").value.toUpperCase();
+    var eHex = document.getElementById("ePicker").value.toUpperCase();
+    var lines = grid.map(function (row) { return '            "' + row.join("") + '",'; });
+    lines[lines.length - 1] = lines[lines.length - 1].slice(0, -1);
+    var code =
+"        // Pixel art do coelho: '.' transparente, 'K' preto, 'F' pelagem, 'E' orelha interna\n" +
+"        private val SPRITE = arrayOf(\n" +
+lines.join("\n") + "\n" +
+"        )\n\n" +
+"        // dentro de buildSprite():\n" +
+"        //   'K' -> Color.parseColor(\"#000000\")\n" +
+"        //   'F' -> Color.parseColor(\"" + fHex + "\")\n" +
+"        //   'E' -> Color.parseColor(\"" + eHex + "\")";
+    document.getElementById("codeOut").value = code;
+  }
+
+  document.getElementById("toolbar").addEventListener("click", function (e) {
+    var swatch = e.target.closest(".swatch");
+    if (!swatch) return;
+    brush = swatch.dataset.ch;
+    document.querySelectorAll(".swatch").forEach(function (s) { s.classList.remove("active"); });
+    swatch.classList.add("active");
+  });
+
+  ["fPicker", "ePicker"].forEach(function (id) {
+    document.getElementById(id).addEventListener("input", function () {
+      document.getElementById("fDot").style.background = document.getElementById("fPicker").value;
+      document.getElementById("eDot").style.background = document.getElementById("ePicker").value;
+      renderAll();
+    });
+  });
+
+  gridEl.addEventListener("pointerdown", function (e) {
+    var cell = e.target.closest(".cell");
+    if (!cell) return;
+    painting = true;
+    paintCell(+cell.dataset.r, +cell.dataset.c, brush);
+    renderPreview(); renderCode(); persist();
+  });
+  gridEl.addEventListener("pointerenter", function (e) {
+    if (!painting) return;
+    var cell = e.target.closest(".cell");
+    if (!cell) return;
+    paintCell(+cell.dataset.r, +cell.dataset.c, brush);
+    renderPreview(); renderCode(); persist();
+  }, true);
+  window.addEventListener("pointerup", function () { painting = false; });
+
+  document.getElementById("resetBtn").addEventListener("click", function () {
+    grid = SEED.map(function (row) { return row.split(""); });
+    renderAll();
+  });
+
+  document.getElementById("copyBtn").addEventListener("click", function () {
+    var ta = document.getElementById("codeOut");
+    var btn = document.getElementById("copyBtn");
+    function done(ok) {
+      btn.textContent = ok ? "Copiado!" : "Selecione e copie";
+      setTimeout(function () { btn.textContent = "Copiar código"; }, 1500);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(ta.value).then(function () { done(true); }, function () {
+        ta.select(); done(false);
+      });
+    } else {
+      ta.select(); done(false);
+    }
+  });
+
+  renderAll();
+})();
+</script>

@@ -1,0 +1,22 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/caches/
+/.idea/libraries/
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/shelf/
+.DS_Store
+/build/
+/app/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.ap_
+*.dex
+
+# arquivos soltos do plugin de terceiros (nao fazem parte do DeskPet)
+/SKILL.md
+/examples.md
+/reference.md
