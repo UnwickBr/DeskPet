@@ -36,6 +36,22 @@ class MainActivity : AppCompatActivity() {
             stopService(Intent(this, PetOverlayService::class.java))
             statusText.text = getString(R.string.status_stopped)
         }
+
+        findViewById<Button>(R.id.randomMoveButton).setOnClickListener {
+            if (Settings.canDrawOverlays(this)) {
+                val intent = Intent(this, PetOverlayService::class.java).apply {
+                    action = PetOverlayService.ACTION_TOGGLE_RANDOM
+                }
+                startForegroundService(intent)
+            } else {
+                statusText.text = getString(R.string.status_need_permission)
+                requestOverlayPermission()
+            }
+        }
+
+        findViewById<Button>(R.id.notificationAccessButton).setOnClickListener {
+            startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+        }
     }
 
     override fun onResume() {

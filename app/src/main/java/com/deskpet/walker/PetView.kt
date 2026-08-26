@@ -21,13 +21,36 @@ class PetView(
 ) : View(context) {
 
     private val bitmapPaint = Paint().apply { isFilterBitmap = false }
-    private val spriteBitmap = buildSprite()
+    private val spriteIdle = buildSprite(SPRITE_IDLE)
+    private val spriteWalkA = buildSprite(SPRITE_WALK_A)
+    private val spriteWalkB = buildSprite(SPRITE_WALK_B)
+    private val spriteSleep = buildSprite(SPRITE_SLEEP)
+    private val spriteReact = buildSprite(SPRITE_REACT)
+    private var currentSprite = spriteIdle
 
     private var direction = 1
     private var hopPhase = 0.0
     private val screenWidth = context.resources.displayMetrics.widthPixels
     private val screenHeight = context.resources.displayMetrics.heightPixels
     private var baseY = params.y
+
+    private var randomMode = false
+    private var vx = STEP_PX
+    private var vy = 0
+    private var stepsUntilRedirect = 0
+
+    private var walkFrameToggle = false
+    private var walkStepCounter = 0
+
+    private var asleep = false
+    private var lastInteractionAt = System.currentTimeMillis()
+
+    private var reacting = false
+    private val reactEndRunnable = Runnable {
+        reacting = false
+        updateSprite()
+        invalidate()
+    }
 
     private val handler = Handler(Looper.getMainLooper())
     private var walking = false
@@ -57,7 +80,89 @@ class PetView(
         handler.removeCallbacks(stepRunnable)
     }
 
+    fun toggleRandomMovement() {
+        markInteraction()
+        randomMode = !randomMode
+        if (randomMode) pickRandomDirection()
+    }
+
+    fun triggerReaction() {
+        if (asleep) return
+        reacting = true
+        handler.removeCallbacks(reactEndRunnable)
+        handler.postDelayed(reactEndRunnable, REACT_DURATION_MS)
+        updateSprite()
+        invalidate()
+    }
+
+    private fun markInteraction() {
+        lastInteractionAt = System.currentTimeMillis()
+    }
+
+    private fun enterSleep() {
+        asleep = true
+        walking = false
+        handler.removeCallbacks(stepRunnable)
+        hopPhase = 0.0
+        params.y = baseY
+        updateSprite()
+        windowManager.updateViewLayout(this, params)
+        invalidate()
+    }
+
+    private fun wakeUp() {
+        if (!asleep) return
+        asleep = false
+        updateSprite()
+    }
+
+    private fun pickRandomDirection() {
+        val options = intArrayOf(-STEP_PX, 0, STEP_PX)
+        do {
+            vx = options.random()
+            vy = options.random()
+        } while (vx == 0 && vy == 0)
+        if (vx != 0) direction = if (vx > 0) 1 else -1
+        stepsUntilRedirect = (20..60).random()
+    }
+
     private fun step() {
+        if (System.currentTimeMillis() - lastInteractionAt >= SLEEP_TIMEOUT_MS) {
+            enterSleep()
+            return
+        }
+
+        if (randomMode) {
+            stepRandom()
+        } else {
+            stepPatrol()
+        }
+
+        walkStepCounter++
+        if (walkStepCounter >= WALK_FRAME_STEPS) {
+            walkStepCounter = 0
+            walkFrameToggle = !walkFrameToggle
+        }
+
+        hopPhase += HOP_SPEED
+        val bounce = -abs(sin(hopPhase)) * HOP_HEIGHT_PX
+        params.y = baseY + bounce.toInt()
+
+        updateSprite()
+        windowManager.updateViewLayout(this, params)
+        invalidate()
+    }
+
+    private fun updateSprite() {
+        currentSprite = when {
+            asleep -> spriteSleep
+            reacting -> spriteReact
+            walking -> if (walkFrameToggle) spriteWalkB else spriteWalkA
+            else -> spriteIdle
+        }
+    }
+
+    private fun stepPatrol() {
         params.x += direction * STEP_PX
 
         if (params.x <= 0) {
@@ -67,19 +172,49 @@ class PetView(
             params.x = screenWidth - width
             direction = -1
         }
+    }
 
-        hopPhase += HOP_SPEED
-        val bounce = -abs(sin(hopPhase)) * HOP_HEIGHT_PX
-        params.y = baseY + bounce.toInt()
+    private fun stepRandom() {
+        params.x += vx
+        baseY += vy
 
-        windowManager.updateViewLayout(this, params)
-        invalidate()
+        var bounced = false
+        if (params.x <= 0) {
+            params.x = 0
+            vx = abs(vx)
+            bounced = true
+        } else if (params.x + width >= screenWidth) {
+            params.x = screenWidth - width
+            vx = -abs(vx)
+            bounced = true
+        }
+        if (baseY <= 0) {
+            baseY = 0
+            vy = abs(vy)
+            bounced = true
+        } else if (baseY + height >= screenHeight) {
+            baseY = screenHeight - height
+            vy = -abs(vy)
+            bounced = true
+        }
+        if (vx != 0) direction = if (vx > 0) 1 else -1
+
+        stepsUntilRedirect--
+        if (bounced || stepsUntilRedirect <= 0) pickRandomDirection()
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                wasWalkingBeforeDrag = walking
+                markInteraction()
+                val wasAsleep = asleep
+                if (wasAsleep) {
+                    wakeUp()
+                } else {
+                    triggerReaction()
+                }
+
+                wasWalkingBeforeDrag = if (wasAsleep) true else walking
                 walking = false
                 handler.removeCallbacks(stepRunnable)
                 params.y = baseY
@@ -100,6 +235,7 @@ class PetView(
                 return true
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                markInteraction()
                 baseY = params.y
                 if (wasWalkingBeforeDrag) startWalking()
                 return true
@@ -120,15 +256,15 @@ class PetView(
 
         canvas.save()
         canvas.scale(scaleX, scaleY, w / 2f, h)
-        canvas.drawBitmap(spriteBitmap, null, RectF(0f, 0f, w, h), bitmapPaint)
+        canvas.drawBitmap(currentSprite, null, RectF(0f, 0f, w, h), bitmapPaint)
         canvas.restore()
     }
 
-    private fun buildSprite(): Bitmap {
-        val cols = SPRITE[0].length
-        val bmp = Bitmap.createBitmap(cols, SPRITE.size, Bitmap.Config.ARGB_8888)
-        for (y in SPRITE.indices) {
-            val row = SPRITE[y]
+    private fun buildSprite(pattern: Array<String>): Bitmap {
+        val cols = pattern[0].length
+        val bmp = Bitmap.createBitmap(cols, pattern.size, Bitmap.Config.ARGB_8888)
+        for (y in pattern.indices) {
+            val row = pattern[y]
             for (x in row.indices) {
                 val color = when (row[x]) {
                     'K' -> Color.parseColor("#000000")
@@ -148,9 +284,12 @@ class PetView(
         private const val STEP_INTERVAL_MS = 60L
         private const val HOP_SPEED = 0.35
         private const val HOP_HEIGHT_PX = 26f
+        private const val WALK_FRAME_STEPS = 5
+        private const val REACT_DURATION_MS = 600L
+        private const val SLEEP_TIMEOUT_MS = 30_000L
 
         // Pixel art do coelho: '.' transparente, 'K' preto, 'F' pelo, 'E' orelha interna, 'R' rosa
-        private val SPRITE = arrayOf(
+        private val SPRITE_IDLE = arrayOf(
             "..................",
             "..................",
             "...KK..KK.........",
@@ -159,6 +298,85 @@ class PetView(
             "..KREKKREK........",
             ".KFFFFFFFFK.......",
             ".KFFFFFFFFK.......",
+            "KFKFFFKFFFFK......",
+            "KFKFFFKFFFFK.KK...",
+            "KFFEKEFFFFFKKEEK..",
+            ".KFEEEFFFFKFFKEK..",
+            "..KKKKKKKKFFFKK...",
+            "...KFFFFFFFFFK....",
+            "...KFFKFFFKFFK....",
+            "....KKKKKKKKK.....",
+        )
+
+        // ciclo de caminhada: pata direita levantada
+        private val SPRITE_WALK_A = arrayOf(
+            "..................",
+            "..................",
+            "...KK..KK.........",
+            "..KEEKKEEK........",
+            "..KREKKREK........",
+            "..KREKKREK........",
+            ".KFFFFFFFFK.......",
+            ".KFFFFFFFFK.......",
+            "KFKFFFKFFFFK......",
+            "KFKFFFKFFFFK.KK...",
+            "KFFEKEFFFFFKKEEK..",
+            ".KFEEEFFFFKFFKEK..",
+            "..KKKKKKKKFFFKK...",
+            "...KFFFFFFFFFK....",
+            "...KFFKFFKKKK.....",
+            "....KKKKKK........",
+        )
+
+        // ciclo de caminhada: pata esquerda levantada
+        private val SPRITE_WALK_B = arrayOf(
+            "..................",
+            "..................",
+            "...KK..KK.........",
+            "..KEEKKEEK........",
+            "..KREKKREK........",
+            "..KREKKREK........",
+            ".KFFFFFFFFK.......",
+            ".KFFFFFFFFK.......",
+            "KFKFFFKFFFFK......",
+            "KFKFFFKFFFFK.KK...",
+            "KFFEKEFFFFFKKEEK..",
+            ".KFEEEFFFFKFFKEK..",
+            "..KKKKKKKKFFFKK...",
+            "...KFFKFFKFFFK....",
+            "...KKKKKKKFFFK....",
+            "..........KKK.....",
+        )
+
+        // dormindo: olhos fechados
+        private val SPRITE_SLEEP = arrayOf(
+            "..................",
+            "..................",
+            "...KK..KK.........",
+            "..KEEKKEEK........",
+            "..KREKKREK........",
+            "..KREKKREK........",
+            ".KFFFFFFFFK.......",
+            ".KFFFFFFFFK.......",
+            "KFFFFFFFFFFK......",
+            "KKKFFFKKFFFK.KK...",
+            "KFFEKEFFFFFKKEEK..",
+            ".KFEEEFFFFKFFKEK..",
+            "..KKKKKKKKFFFKK...",
+            "...KFFFFFFFFFK....",
+            "....KKKKKKKKK.....",
+        )
+
+        // reacao (toque / notificacao): olhos arregalados
+        private val SPRITE_REACT = arrayOf(
+            "..................",
+            "..................",
+            "...KK..KK.........",
+            "..KEEKKEEK........",
+            "..KREKKREK........",
+            "..KREKKREK........",
+            ".KFFFFFFFFK.......",
+            ".KKFFFKFFFK.......",
             "KFKFFFKFFFFK......",
             "KFKFFFKFFFFK.KK...",
             "KFFEKEFFFFFKKEEK..",

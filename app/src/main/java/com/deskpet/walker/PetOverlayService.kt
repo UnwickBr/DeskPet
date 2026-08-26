@@ -8,7 +8,9 @@ import android.app.Service
 import android.content.Intent
 import android.graphics.PixelFormat
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.view.Gravity
 import android.view.WindowManager
 
@@ -17,15 +19,28 @@ class PetOverlayService : Service() {
     private lateinit var windowManager: WindowManager
     private var petView: PetView? = null
 
+    private val mainHandler = Handler(Looper.getMainLooper())
+
     override fun onCreate() {
         super.onCreate()
         startForeground(NOTIFICATION_ID, buildNotification())
         addPetView()
+        PetNotificationListener.petCallback = {
+            mainHandler.post { petView?.triggerReaction() }
+        }
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_TOGGLE_RANDOM) {
+            petView?.toggleRandomMovement()
+        }
+        return START_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        PetNotificationListener.petCallback = null
         petView?.let {
             it.stopWalking()
             windowManager.removeView(it)
@@ -84,6 +99,7 @@ class PetOverlayService : Service() {
     }
 
     companion object {
+        const val ACTION_TOGGLE_RANDOM = "com.deskpet.walker.action.TOGGLE_RANDOM"
         private const val NOTIFICATION_ID = 1001
         private const val PET_WIDTH_PX = 168
         private const val PET_HEIGHT_PX = 192

@@ -33,4 +33,18 @@
         android:layout_marginTop="12dp"
         android:text="Parar" />
 
+    <Button
+        android:id="@+id/randomMoveButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="Alternar movimento aleatório" />
+
+    <Button
+        android:id="@+id/notificationAccessButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="Permitir acesso a notificações" />
+
 </LinearLayout>
