@@ -24,8 +24,11 @@ from PySide6.QtGui import QAction, QActionGroup, QBitmap, QIcon, QImage, QPainte
 from PySide6.QtWidgets import (QApplication, QCheckBox, QDialog, QDialogButtonBox, QFormLayout, QHBoxLayout,
                                QLabel, QMenu, QSlider, QSpinBox, QSystemTrayIcon, QVBoxLayout, QWidget)
 
-HERE = Path(__file__).resolve().parent
+IS_WINDOWS = sys.platform == "win32"
+FROZEN = getattr(sys, "frozen", False)   # rodando como .exe (PyInstaller)
+HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
 SPRITES_DIR = HERE / "sprites"
+WIN_RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 AUTOSTART_FILE = Path.home() / ".config/autostart/deskpet.desktop"
 AUTOSTART_CONTENT = f"""[Desktop Entry]
 Type=Application
@@ -67,11 +70,37 @@ def now_ms() -> int:
     return int(time.monotonic() * 1000)
 
 
+def _win_launch_cmd() -> str:
+    if FROZEN:
+        return f'"{sys.executable}"'
+    pyw = Path(sys.executable).with_name("pythonw.exe")
+    return f'"{pyw if pyw.exists() else sys.executable}" "{Path(__file__).resolve()}"'
+
+
 def autostart_enabled() -> bool:
+    if IS_WINDOWS:
+        import winreg
+        try:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, WIN_RUN_KEY) as k:
+                winreg.QueryValueEx(k, "DeskPet")
+            return True
+        except OSError:
+            return False
     return AUTOSTART_FILE.exists()
 
 
 def set_autostart(on: bool):
+    if IS_WINDOWS:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, WIN_RUN_KEY, 0, winreg.KEY_SET_VALUE) as k:
+            if on:
+                winreg.SetValueEx(k, "DeskPet", 0, winreg.REG_SZ, _win_launch_cmd())
+            else:
+                try:
+                    winreg.DeleteValue(k, "DeskPet")
+                except OSError:
+                    pass
+        return
     if on:
         AUTOSTART_FILE.parent.mkdir(parents=True, exist_ok=True)
         AUTOSTART_FILE.write_text(AUTOSTART_CONTENT, encoding="utf-8")
@@ -694,7 +723,8 @@ class PetWindow(QWidget):
 
 def main():
     # No Wayland um app não pode posicionar a própria janela; via XWayland pode.
-    os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
+    if sys.platform.startswith("linux"):
+        os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
     app = QApplication(sys.argv)
     app.setApplicationName("DeskPet")
     app.setDesktopFileName("deskpet")
