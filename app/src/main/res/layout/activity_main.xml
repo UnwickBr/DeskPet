@@ -47,4 +47,33 @@
         android:layout_marginTop="12dp"
         android:text="Permitir acesso a notificações" />
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="Dormir após quantos segundos parado:" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal">
+
+        <EditText
+            android:id="@+id/sleepSecondsInput"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="30"
+            android:inputType="number" />
+
+        <Button
+            android:id="@+id/saveSleepTimeoutButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="Salvar" />
+
+    </LinearLayout>
+
 </LinearLayout>

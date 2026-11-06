@@ -25,14 +25,19 @@ class PetOverlayService : Service() {
         super.onCreate()
         startForeground(NOTIFICATION_ID, buildNotification())
         addPetView()
+        isRunning = true
         PetNotificationListener.petCallback = {
             mainHandler.post { petView?.triggerReaction() }
         }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_TOGGLE_RANDOM) {
-            petView?.toggleRandomMovement()
+        when (intent?.action) {
+            ACTION_TOGGLE_RANDOM -> petView?.toggleRandomMovement()
+            ACTION_SET_SLEEP_TIMEOUT -> {
+                val ms = intent.getLongExtra(EXTRA_SLEEP_TIMEOUT_MS, PetView.DEFAULT_SLEEP_TIMEOUT_MS)
+                petView?.setSleepTimeoutMs(ms)
+            }
         }
         return START_STICKY
     }
@@ -40,6 +45,7 @@ class PetOverlayService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        isRunning = false
         PetNotificationListener.petCallback = null
         petView?.let {
             it.stopWalking()
@@ -65,7 +71,10 @@ class PetOverlayService : Service() {
         params.x = 0
         params.y = 400
 
-        val view = PetView(this, windowManager, params)
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        val sleepTimeoutMs = prefs.getLong(KEY_SLEEP_TIMEOUT_MS, PetView.DEFAULT_SLEEP_TIMEOUT_MS)
+
+        val view = PetView(this, windowManager, params, sleepTimeoutMs)
         petView = view
         windowManager.addView(view, params)
         view.startWalking()
@@ -100,8 +109,19 @@ class PetOverlayService : Service() {
 
     companion object {
         const val ACTION_TOGGLE_RANDOM = "com.deskpet.walker.action.TOGGLE_RANDOM"
+        const val ACTION_SET_SLEEP_TIMEOUT = "com.deskpet.walker.action.SET_SLEEP_TIMEOUT"
+        const val EXTRA_SLEEP_TIMEOUT_MS = "sleep_timeout_ms"
+        const val PREFS_NAME = "deskpet_prefs"
+        const val KEY_SLEEP_TIMEOUT_MS = "sleep_timeout_ms"
         private const val NOTIFICATION_ID = 1001
-        private const val PET_WIDTH_PX = 168
+        // Largura maior que o desenho em si (168px), sobrando margem nas
+        // laterais pra animacao de balanco nao cortar. PetView desenha o
+        // sprite centralizado ocupando 2/3 dessa largura (ver onDraw).
+        private const val PET_WIDTH_PX = 252
         private const val PET_HEIGHT_PX = 192
+
+        @Volatile
+        var isRunning = false
+            private set
     }
 }
