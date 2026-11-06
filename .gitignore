@@ -23,3 +23,7 @@
 
 # estado local de ferramenta (Claude Code)
 /.claude/
+
+# cache do Python
+__pycache__/
+*.pyc
